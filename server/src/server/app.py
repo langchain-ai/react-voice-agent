@@ -1,6 +1,7 @@
 from starlette.websockets import WebSocket
-from server.graph import graph
-from server.src.server.utils import amerge, websocket_stream
+
+# from server.graph import graph
+from server.utils import amerge, websocket_stream
 import server.openai as oai
 
 from starlette.applications import Starlette
@@ -56,6 +57,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     browser_receive_stream = websocket_stream(websocket)
 
+    async for data in browser_receive_stream:
+        print(data)
+        await websocket.send_bytes(data)
+
+    return
+
     async with oai.connect() as (model_send, model_receive_stream):
 
         task: asyncio.Task | None = None
@@ -78,13 +85,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     # from model_receive_stream
                     print("model data", data)
                     if data["type"] == "input_audio_buffer.append":
+                        websocket.send_bytes(data["audio_buffer"])
 
                 else:
                     # from browser_receive_stream
                     print("browser data", data)
-                    audio_chunk = {
-                    
-                    }
+                    audio_chunk = {}
                     await model_send(data)
         except Exception as e:
             print(f"WebSocket error: {e}")
@@ -93,92 +99,99 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def homepage(request):
-    html = """
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>WebSocket Audio Stream</title>
-        </head>
-        <body>
-            <h1>WebSocket Audio Stream</h1>
-            <button id="startButton">Start Streaming</button>
-            <button id="stopButton" disabled>Stop Streaming</button>
-            <script>
-                let audioContext;
-                let mediaRecorder;
-                let ws;
-                let audioQueue = [];
-                let isPlaying = false;
 
-                const startButton = document.getElementById('startButton');
-                const stopButton = document.getElementById('stopButton');
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microphone to Speaker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #toggleAudio {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #toggleAudio:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggleAudio">Start Audio</button>
 
-                startButton.onclick = startStreaming;
-                stopButton.onclick = stopStreaming;
+    <script>
+        // Create audio context
+        
 
-                function startStreaming() {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    ws = new WebSocket("ws://localhost:8000/ws");
+        // Function to get microphone input and send it to WebSocket
+        async function startAudio() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const ws = new WebSocket("ws://localhost:3000/ws");
 
-                    ws.onmessage = function(event) {
-                        const audioData = event.data;
-                        audioQueue.push(audioData);
-                        if (!isPlaying) {
-                            playNextChunk();
+                ws.onopen = () => {
+                    console.log('open')
+                    const mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = event => {
+                        console.log('sending', event.data);
+                        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+                        console.log('sent')
+                            ws.send(event.data);
                         }
                     };
+                    mediaRecorder.start(10);
+                };
 
-                    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-                        .then(stream => {
-                            mediaRecorder = new MediaRecorder(stream);
-                            mediaRecorder.ondataavailable = event => {
-                                if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-                                    ws.send(event.data);
-                                }
-                            };
-                            mediaRecorder.start(100);
-                        })
-                        .catch(err => console.error("Error accessing microphone:", err));
+                ws.onmessage = event => {
+                    console.log('message')
+                    const audioBuffer = audioContext.decodeAudioData(event.data);
+                    const playbackSource = audioContext.createBufferSource();
+                    playbackSource.buffer = audioBuffer;
+                    playbackSource.connect(audioContext.destination);
+                    playbackSource.start();
+                };
 
-                    startButton.disabled = true;
-                    stopButton.disabled = false;
-                }
+            } catch (error) {
+                console.error('Error accessing the microphone', error);
+                alert('Error accessing the microphone. Please check your settings and try again.');
+            }
+        }
 
-                function stopStreaming() {
-                    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                        mediaRecorder.stop();
-                    }
-                    if (ws) {
-                        ws.close();
-                    }
-                    if (audioContext) {
-                        audioContext.close();
-                    }
-                    startButton.disabled = false;
-                    stopButton.disabled = true;
-                }
+        // Button to toggle audio
+        const toggleButton = document.getElementById('toggleAudio');
+        let isAudioOn = false;
 
-                async function playNextChunk() {
-                    if (audioQueue.length === 0) {
-                        isPlaying = false;
-                        return;
-                    }
+        toggleButton.addEventListener('click', async () => {
+            if (!isAudioOn) {
+                await startAudio();
+                toggleButton.textContent = 'Stop Audio';
+                isAudioOn = true;
+            } else {
+                audioContext.suspend();
+                toggleButton.textContent = 'Start Audio';
+                isAudioOn = false;
+            }
+        });
 
-                    isPlaying = true;
-                    const audioChunk = audioQueue.shift();
-                    const arrayBuffer = await audioChunk.arrayBuffer();
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    
-                    const source = audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(audioContext.destination);
-                    source.onended = playNextChunk;
-                    source.start();
-                }
-            </script>
-        </body>
-    </html>
-    """
+    </script>
+</body>
+</html>"""
     return HTMLResponse(html)
 
 
@@ -187,4 +200,4 @@ routes = [Route("/", homepage), WebSocketRoute("/ws", websocket_endpoint)]
 app = Starlette(debug=True, routes=routes)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=3000)
