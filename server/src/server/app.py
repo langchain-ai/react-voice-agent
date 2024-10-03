@@ -8,6 +8,7 @@ from starlette.applications import Starlette
 from starlette.responses import HTMLResponse
 from starlette.websockets import WebSocket
 from starlette.routing import WebSocketRoute, Route
+from starlette.staticfiles import StaticFiles
 import uvicorn
 import asyncio
 
@@ -99,105 +100,19 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def homepage(request):
+    with open("src/server/to_socket.html") as f:
+        html = f.read()
+        return HTMLResponse(html)
 
-    html = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Microphone to Speaker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        #toggleAudio {
-            font-size: 18px;
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        #toggleAudio:hover {
-            background-color: #45a049;
-        }
-    </style>
-</head>
-<body>
-    <button id="toggleAudio">Start Audio</button>
 
-    <script>
-        // Create audio context
-        
-
-        // Function to get microphone input and send it to WebSocket
-        async function startAudio() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const ws = new WebSocket("ws://localhost:3000/ws");
-
-                ws.onopen = () => {
-                    console.log('open')
-                    const mediaRecorder = new MediaRecorder(stream);
-                    mediaRecorder.ondataavailable = event => {
-                        console.log('sending', event.data);
-                        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-                        console.log('sent')
-                            ws.send(event.data);
-                        }
-                    };
-                    mediaRecorder.start(10);
-                };
-
-                ws.onmessage = event => {
-                    console.log('message')
-                    const audioBuffer = audioContext.decodeAudioData(event.data);
-                    const playbackSource = audioContext.createBufferSource();
-                    playbackSource.buffer = audioBuffer;
-                    playbackSource.connect(audioContext.destination);
-                    playbackSource.start();
-                };
-
-            } catch (error) {
-                console.error('Error accessing the microphone', error);
-                alert('Error accessing the microphone. Please check your settings and try again.');
-            }
-        }
-
-        // Button to toggle audio
-        const toggleButton = document.getElementById('toggleAudio');
-        let isAudioOn = false;
-
-        toggleButton.addEventListener('click', async () => {
-            if (!isAudioOn) {
-                await startAudio();
-                toggleButton.textContent = 'Stop Audio';
-                isAudioOn = true;
-            } else {
-                audioContext.suspend();
-                toggleButton.textContent = 'Start Audio';
-                isAudioOn = false;
-            }
-        });
-
-    </script>
-</body>
-</html>"""
-    return HTMLResponse(html)
+# catchall route to load files from src/server/static
 
 
 routes = [Route("/", homepage), WebSocketRoute("/ws", websocket_endpoint)]
 
 app = Starlette(debug=True, routes=routes)
+
+app.mount("/", StaticFiles(directory="src/server/static"), name="static")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=3000)

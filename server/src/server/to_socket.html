@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microphone to Speaker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #toggleAudio {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #toggleAudio:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <button id="toggleAudio">Start Audio</button>
+
+    <script>
+        // Create audio context
+        class Player {
+            constructor() {
+                this.playbackNode = null;
+            }
+
+            async init(sampleRate) {
+                const audioContext = new AudioContext({ sampleRate });
+                await audioContext.audioWorklet.addModule("/audio-playback-worklet.js");
+
+                this.playbackNode = new AudioWorkletNode(audioContext, "audio-playback-worklet");
+                this.playbackNode.connect(audioContext.destination);
+            }
+
+            play(buffer) {
+                if (this.playbackNode) {
+                    this.playbackNode.port.postMessage(buffer);
+                }
+            }
+
+            stop() {
+                if (this.playbackNode) {
+                    this.playbackNode.port.postMessage(null);
+                }
+            }
+        }   
+
+        class Recorder {
+            constructor(onDataAvailable) {
+                this.onDataAvailable = onDataAvailable;
+                this.audioContext = null;
+                this.mediaStream = null;
+                this.mediaStreamSource = null;
+                this.workletNode = null;
+            }
+
+            async start(stream) {
+                try {
+                    if (this.audioContext) {
+                        await this.audioContext.close();
+                    }
+
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+
+                    await this.audioContext.audioWorklet.addModule("./audio-processor-worklet.js");
+
+                    this.mediaStream = stream;
+                    this.mediaStreamSource = this.audioContext.createMediaStreamSource(this.mediaStream);
+
+                    this.workletNode = new AudioWorkletNode(this.audioContext, "audio-processor-worklet");
+                    this.workletNode.port.onmessage = event => {
+                        this.onDataAvailable(event.data.buffer);
+                    };
+
+                    this.mediaStreamSource.connect(this.workletNode);
+                    this.workletNode.connect(this.audioContext.destination);
+                } catch (error) {
+                    this.stop();
+                }
+            }
+
+            async stop() {
+                if (this.mediaStream) {
+                    this.mediaStream.getTracks().forEach(track => track.stop());
+                    this.mediaStream = null;
+                }
+
+                if (this.audioContext) {
+                    await this.audioContext.close();
+                    this.audioContext = null;
+                }
+
+                this.mediaStreamSource = null;
+                this.workletNode = null;
+            }
+        }
+
+
+
+        // Function to get microphone input and send it to WebSocket
+        async function startAudio() {
+            try {
+                // const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const ws = new WebSocket("ws://localhost:3000/ws");
+                const audioPlayer = new Player();
+                audioPlayer.init(24000);
+
+                ws.onopen = () => {
+                    const mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+                            ws.send(event.data);
+                        }
+                    };
+                    mediaRecorder.start(10);
+                };
+
+                ws.onmessage = event => {
+                    
+                    // Create a FileReader to read the Blob as an ArrayBuffer
+                    const reader = new FileReader();
+                    
+                    reader.onloadend = () => {
+                        // Once reading is finished, the result is available as an ArrayBuffer
+                        const arrayBuffer = reader.result;
+                        let uint8Array = new Uint8Array(arrayBuffer);
+                        if (uint8Array.length % 2 !== 0) {
+                            uint8Array = uint8Array.slice(0, -1);
+                        }
+                        const uint16Array = new Uint16Array(uint8Array.buffer);
+                        audioPlayer.play(uint16Array);
+
+                    };
+
+                    // Start reading the Blob as an ArrayBuffer
+                    reader.readAsArrayBuffer(event.data);
+                };
+
+            } catch (error) {
+                console.error('Error accessing the microphone', error);
+                // alert('Error accessing the microphone. Please check your settings and try again.');
+            }
+        }
+
+        // Button to toggle audio
+        const toggleButton = document.getElementById('toggleAudio');
+        let isAudioOn = false;
+
+        toggleButton.addEventListener('click', async () => {
+            if (!isAudioOn) {
+                await startAudio();
+                toggleButton.textContent = 'Stop Audio';
+                isAudioOn = true;
+            } else {
+                // audioContext.suspend();
+                toggleButton.textContent = 'Start Audio';
+                isAudioOn = false;
+            }
+        });
+
+    </script>
+</body>
+</html>
