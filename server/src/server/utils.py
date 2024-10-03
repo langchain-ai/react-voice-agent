@@ -5,16 +5,19 @@ from starlette.websockets import WebSocket
 T = TypeVar("T")
 
 
-async def amerge(*streams: AsyncIterator[T]) -> AsyncIterator[T]:
+async def amerge(**streams: AsyncIterator[T]) -> AsyncIterator[tuple[str, T]]:
     """Merge multiple streams into one stream."""
-    nexts = {asyncio.create_task(anext(stream)): stream for stream in streams}
+    nexts: dict[asyncio.Task, str] = {
+        asyncio.create_task(anext(stream)): key for key, stream in streams.items()
+    }
     while nexts:
         done, _ = await asyncio.wait(nexts, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
-            stream = nexts.pop(task)
+            key = nexts.pop(task)
+            stream = streams[key]
             try:
-                yield task.result()
-                nexts[asyncio.create_task(anext(stream))] = stream
+                yield key, task.result()
+                nexts[asyncio.create_task(anext(stream))] = key
             except StopAsyncIteration:
                 pass
             except Exception as e:

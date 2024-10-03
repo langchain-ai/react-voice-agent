@@ -130,8 +130,11 @@
                 audioPlayer.init(24000);
 
                 ws.onmessage = event => {
-                    
-                    const binary = atob(event.data);
+
+                    const data = JSON.parse(event.data);
+                    if (data?.type !== 'response.audio.delta') return;
+
+                    const binary = atob(data.delta);
                     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
                     const pcmData = new Int16Array(bytes.buffer);
 
@@ -158,7 +161,7 @@
                         const regularArray = String.fromCharCode(...toSend);
                         const base64 = btoa(regularArray);
 
-                        ws.send(base64);
+                        ws.send(JSON.stringify({type: 'input_audio_buffer.append', audio: base64}));
                     }
                 };
 
