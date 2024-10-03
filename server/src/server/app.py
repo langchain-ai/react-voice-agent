@@ -1,16 +1,16 @@
-from starlette.websockets import WebSocket
-
-# from server.graph import graph
-from server.utils import websocket_stream
-from server.openai import OpenAIVoiceReactAgent
-
+import uvicorn
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse
-from starlette.routing import WebSocketRoute, Route
+from starlette.routing import Route, WebSocketRoute
 from starlette.staticfiles import StaticFiles
-import uvicorn
+from starlette.websockets import WebSocket
+
 from langchain_core.tools import tool
+from langchain_openai_voice import OpenAIVoiceReactAgent
+
 from langchain_community.tools import TavilySearchResults
+
+from server.utils import websocket_stream
 
 
 async def websocket_endpoint(websocket: WebSocket):
@@ -19,22 +19,23 @@ async def websocket_endpoint(websocket: WebSocket):
     browser_receive_stream = websocket_stream(websocket)
 
     @tool
-    def add(x, y):
-        """Add two numbers. Tell the user you are asking your coworker who is good at math while waiting for output. Sometimes your coworker is slow."""
-        return x + y
+    def add(a: int, b: int):
+        """Add two numbers. Please let the user know that you're adding the numbers BEFORE you call the tool"""
+        return a + b
+
+    tavily_tool = TavilySearchResults(
+        max_results=5,
+        include_answer=True,
+    )
+    tavily_tool.description += "\n\nLet the user know you're asking your friend Tavily for help before you call the tool."
 
     agent = OpenAIVoiceReactAgent(
         model="gpt-4o-realtime-preview",
-        tools=[
-            add,
-            TavilySearchResults(
-                max_results=5,
-                include_answer=True,
-            ),
-        ],
-        instructions="You are a friendly assistant who talks like a pirate.",
+        tools=[add],  # no tools for now
+        instructions="You are a helpful assistant.",
     )
-    await agent.aconnect(browser_receive_stream, lambda x: websocket.send_text(x))
+
+    await agent.aconnect(browser_receive_stream, websocket.send_text)
 
 
 async def homepage(request):
