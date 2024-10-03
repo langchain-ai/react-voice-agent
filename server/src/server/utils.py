@@ -23,7 +23,7 @@ async def amerge(*streams: AsyncIterator[T]) -> AsyncIterator[T]:
                 raise e
 
 
-async def websocket_stream(websocket: WebSocket) -> AsyncIterator[bytes]:
+async def websocket_stream(websocket: WebSocket) -> AsyncIterator[str]:
     while True:
-        data = await websocket.receive_bytes()
+        data = await websocket.receive_text()
         yield data

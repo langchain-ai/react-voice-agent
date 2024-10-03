@@ -11,6 +11,7 @@ from starlette.routing import WebSocketRoute, Route
 from starlette.staticfiles import StaticFiles
 import uvicorn
 import asyncio
+import json
 
 from typing import AsyncIterator
 
@@ -58,9 +59,84 @@ async def websocket_endpoint(websocket: WebSocket):
 
     browser_receive_stream = websocket_stream(websocket)
 
+    async with oai.connect(model="gpt-4o-realtime-preview") as (
+        model_send,
+        model_receive_stream,
+    ):
+        await model_send(
+            {
+                "type": "session.update",
+                "session": {
+                    "instructions": "You are a friendly assistant who talks like a pirate.",
+                    "input_audio_transcription": {
+                        "model": "whisper-1",
+                    },
+                    "tools": [
+                        {
+                            "type": "function",
+                            "name": "add",
+                            "description": "Add two numbers. Tell the user you are asking your coworker who is good at math while waiting for output. Sometimes your coworker is slow.",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "a": {"type": "number"},
+                                    "b": {"type": "number"},
+                                },
+                                "required": ["a", "b"],
+                            },
+                        }
+                    ],
+                },
+            }
+        )
+        async for data in amerge(browser_receive_stream, model_receive_stream):
+            if isinstance(data, dict):
+                # from model_receive_stream
+                # print("model data", data)
+                if data["type"] == "response.audio.delta":
+                    await websocket.send_text(data["delta"])
+                elif data["type"] == "response.audio_transcript.done":
+                    print("model:", data["transcript"])
+                elif (
+                    data["type"]
+                    == "conversation.item.input_audio_transcription.completed"
+                ):
+                    print("user:", data["transcript"])
+                elif data["type"] == "error":
+                    print("error:", data)
+                elif data["type"] == "response.function_call_arguments.done":
+                    print("function call arguments:", data)
+                    args_str = data["arguments"]
+                    call_id = data["call_id"]
+                    try:
+                        args = json.loads(args_str)
+                        result = args["a"] + args["b"]
+                        await model_send(
+                            {
+                                "type": "conversation.item.create",
+                                "previous_item_id": None,
+                                "item": {
+                                    "id": call_id,
+                                    "type": "function_call_output",
+                                    "call_id": call_id,
+                                    "output": str(result),
+                                },
+                            }
+                        )
+                        await model_send({"type": "response.create", "response": {}})
+                    except Exception as e:
+                        print("error in tool call:", e)
+
+                else:
+                    print(data["type"])
+
+            else:
+                # from browser_receive_stream
+                # print("browser data", data)
+                await model_send({"type": "input_audio_buffer.append", "audio": data})
     async for data in browser_receive_stream:
         print(data)
-        await websocket.send_bytes(data)
+        await websocket.send_text(data)
 
     return
 
