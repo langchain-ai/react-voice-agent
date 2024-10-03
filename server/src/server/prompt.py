@@ -1,1 +1,1 @@
-INSTRUCTIONS = "You are a helpful assistant."
+INSTRUCTIONS = "You are a helpful assistant. Speak English."
