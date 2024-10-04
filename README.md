@@ -8,6 +8,8 @@ Specifically, we enable this model to call tools by providing it a list of [Lang
 
 ## Installation
 
+### Python
+
 Make sure you're running Python 3.10 or later, then install `uv` to be able to run the project:
 
 ```bash
@@ -23,13 +25,32 @@ export TAVILY_API_KEY=your_tavily_api_key
 
 Note: the Tavily API key is for the Tavily search engine, you can get an API key [here](https://app.tavily.com/). This is just an example tool, and if you do not want to use it you do not have to (see [Adding your own tools](#adding-your-own-tools))
 
+### TypeScript
+
+Navigate into the `js_server` folder, then install required dependencies with `yarn`:
+
+```bash
+yarn
+```
+
+You will also need to copy the provided `js_server/.env.example` file to `.env` and fill in your OpenAI and Tavily keys.
+
 ## Running the project
 
-To run the project, execute the following command:
+### Python
+
+To run the project, execute the following commands:
 
 ```bash
 cd server
 uv run src/server/app.py
+```
+
+### TypeScript
+
+```bash
+cd js_server
+yarn dev
 ```
 
 ## Open the browser
@@ -44,11 +65,11 @@ You may need to make sure that your browser can access your microphone.
 
 ## Adding your own tools
 
-You can add your own tools by adding them to the `server/src/server/tools.py` file.
+You can add your own tools by adding them to the `server/src/server/tools.py` file for Python or the `js_server/src/tools.ts` folder for TypeScript.
 
 ## Adding your own custom instructions
 
-You can add your own custom instructions by adding them to the `server/src/server/prompt.py` file.
+You can add your own custom instructions by adding them to the `server/src/server/prompt.py` file for Python or the `js_server/src/prompt.ts` folder for TypeScript.
 
 ## Next steps
 
