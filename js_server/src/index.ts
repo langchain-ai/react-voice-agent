@@ -1,15 +1,14 @@
 import "dotenv/config";
+import { type WebSocket } from "ws";
 
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { WebSocket } from "ws";
 
 import { OpenAIVoiceReactAgent } from "./lib/langchain_openai_voice";
 import { INSTRUCTIONS } from "./prompt";
 import { TOOLS } from "./tools";
-import { createStreamFromWebsocket } from "./lib/utils";
 
 const app = new Hono();
 
@@ -30,10 +29,7 @@ app.get(
         tools: TOOLS,
         model: "gpt-4o-realtime-preview",
       });
-      await agent.connect(
-        createStreamFromWebsocket(ws.raw as WebSocket),
-        ws.send.bind(ws)
-      );
+      await agent.connect(ws.raw as WebSocket, ws.send.bind(ws));
     },
     onClose: () => {
       console.log("CLOSING");

@@ -198,13 +198,19 @@ export class OpenAIVoiceReactAgent {
 
   /**
    * Connect to the OpenAI API and send and receive messages.
-   * @param inputStream
+   * @param websocketOrStream
    * @param sendOutputChunk
    */
   async connect(
-    inputStream: AsyncGenerator<string>,
+    websocketOrStream: AsyncGenerator<string> | WebSocket,
     sendOutputChunk: (chunk: string) => void | Promise<void>
   ) {
+    let inputStream;
+    if ("next" in websocketOrStream) {
+      inputStream = websocketOrStream;
+    } else {
+      inputStream = createStreamFromWebsocket(websocketOrStream);
+    }
     const toolsByName = this.tools.reduce(
       (toolsByName: Record<string, StructuredTool>, tool) => {
         toolsByName[tool.name] = tool;
