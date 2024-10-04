@@ -3,15 +3,20 @@ import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 
-const add = tool(async () => {}, {
-  name: "add",
-  description:
-    "Add two numbers. Please let the user know that you're adding the numbers BEFORE you call the tool",
-  schema: z.object({
-    a: z.number(),
-    b: z.number(),
-  }),
-});
+const add = tool(
+  async ({ a, b }) => {
+    return a + b;
+  },
+  {
+    name: "add",
+    description:
+      "Add two numbers. Please let the user know that you're adding the numbers BEFORE you call the tool",
+    schema: z.object({
+      a: z.number(),
+      b: z.number(),
+    }),
+  }
+);
 
 const tavilyTool = new TavilySearchResults({
   maxResults: 5,
