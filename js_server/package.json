@@ -1,0 +1,23 @@
+{
+  "name": "js_server",
+  "scripts": {
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.1",
+    "@hono/node-ws": "^1.0.4",
+    "@langchain/community": "^0.3.4",
+    "@langchain/core": "^0.3.7",
+    "dotenv": "^16.4.5",
+    "hono": "^4.6.3",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.7.1"
+  },
+  "packageManager": "yarn@3.5.1+sha512.8cd0e31bd60779ef4ca92b855fb3462c7ec35ce8b345752b7349a68239776417f46d41d79c8047242d9c93b48a1516f64c7444ebe747d9a02bf26868e6fa1f2b"
+}
