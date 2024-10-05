@@ -71,6 +71,12 @@ You can add your own tools by adding them to the `server/src/server/tools.py` fi
 
 You can add your own custom instructions by adding them to the `server/src/server/prompt.py` file for Python or the `js_server/src/prompt.ts` folder for TypeScript.
 
+## Errors
+
+- `WebSocket connection: HTTP 403`
+  - This error is due to account permissions from OpenAI side, your account/org doesn't have api access to Realtime API or insufficient funds.
+  - check if you have Realtime API access in the playground [here](https://platform.openai.com/playground/realtime).
+
 ## Next steps
 
 - [ ] Enable interrupting the AI
