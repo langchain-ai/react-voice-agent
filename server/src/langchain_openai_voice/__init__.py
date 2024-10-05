@@ -246,7 +246,7 @@ class OpenAIVoiceReactAgent(BaseModel):
                     t = data["type"]
                     if t == "response.audio.delta":
                         await send_output_chunk(json.dumps(data))
-                    elif t == "response.audio_buffer.speech_started":
+                    elif t == "input_audio_buffer.speech_started":
                         print("interrupt")
                         send_output_chunk(json.dumps(data))
                     elif t == "error":
