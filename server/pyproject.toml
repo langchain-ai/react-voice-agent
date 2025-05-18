@@ -7,6 +7,7 @@ requires-python = ">= 3.10"
 dependencies = [
     "langchain-community>=0.3.1",
     "langgraph>=0.2.32",
+    "python-dotenv>=1.0.1",
     "starlette>=0.39.2",
     "uvicorn[standard]>=0.31.0",
 ]

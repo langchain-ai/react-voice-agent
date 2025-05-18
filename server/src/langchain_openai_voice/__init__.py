@@ -1,6 +1,8 @@
 import asyncio
 import json
 import websockets
+from enum import Enum
+from typing import Literal
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, AsyncIterator, Any, Callable, Coroutine
@@ -162,8 +164,31 @@ class VoiceToolExecutor(BaseModel):
                     yield task.result()
 
 
+class VoiceType(str, Enum):
+    """Available voice options for the OpenAI Voice API."""
+    ALLOY = "alloy"
+    ASH = "ash"
+    BALLAD = "ballad"
+    CORAL = "coral"
+    ECHO = "echo"
+    SAGE = "sage"
+    SHIMMER = "shimmer"
+    VERSE = "verse"
+
+
 @beta()
 class OpenAIVoiceReactAgent(BaseModel):
+    """
+    Agent that connects to OpenAI's Voice API for real-time voice interactions.
+    
+    Args:
+        model: The OpenAI model to use
+        api_key: The OpenAI API key (defaults to OPENAI_API_KEY environment variable)
+        instructions: Optional instructions to send to the model
+        tools: Optional list of tools for the agent to use
+        url: The OpenAI API URL
+        voice: The voice to use for audio output. Options: alloy, ash, ballad, coral, echo, sage, shimmer, verse
+    """
     model: str
     api_key: SecretStr = Field(
         alias="openai_api_key",
@@ -172,6 +197,7 @@ class OpenAIVoiceReactAgent(BaseModel):
     instructions: str | None = None
     tools: list[BaseTool] | None = None
     url: str = Field(default=DEFAULT_URL)
+    voice: Literal["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"] = Field(default="alloy")
 
     async def aconnect(
         self,
@@ -218,6 +244,7 @@ class OpenAIVoiceReactAgent(BaseModel):
                         "input_audio_transcription": {
                             "model": "whisper-1",
                         },
+                        "voice": self.voice,
                         "tools": tool_defs,
                     },
                 }
@@ -248,7 +275,7 @@ class OpenAIVoiceReactAgent(BaseModel):
                         await send_output_chunk(json.dumps(data))
                     elif t == "input_audio_buffer.speech_started":
                         print("interrupt")
-                        send_output_chunk(json.dumps(data))
+                        await send_output_chunk(json.dumps(data))
                     elif t == "error":
                         print("error:", data)
                     elif t == "response.function_call_arguments.done":

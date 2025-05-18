@@ -1,4 +1,6 @@
 import uvicorn
+from dotenv import load_dotenv
+load_dotenv()
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse
 from starlette.routing import Route, WebSocketRoute
@@ -22,6 +24,7 @@ async def websocket_endpoint(websocket: WebSocket):
         model="gpt-4o-realtime-preview",
         tools=TOOLS,
         instructions=INSTRUCTIONS,
+        voice="alloy"
     )
 
     await agent.aconnect(browser_receive_stream, websocket.send_text)

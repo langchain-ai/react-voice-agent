@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { serveStatic } from "@hono/node-server/serve-static";
 
-import { OpenAIVoiceReactAgent } from "./lib/langchain_openai_voice";
+import { OpenAIVoiceReactAgent, VoiceType } from "./lib/langchain_openai_voice";
 import { INSTRUCTIONS } from "./prompt";
 import { TOOLS } from "./tools";
 
@@ -28,6 +28,7 @@ app.get(
         instructions: INSTRUCTIONS,
         tools: TOOLS,
         model: "gpt-4o-realtime-preview",
+        voice: VoiceType.ALLOY,
       });
       await agent.connect(ws.raw as WebSocket, ws.send.bind(ws));
     },

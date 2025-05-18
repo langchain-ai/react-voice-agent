@@ -6,6 +6,18 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 const DEFAULT_MODEL = "gpt-4o-realtime-preview";
 const DEFAULT_URL = "wss://api.openai.com/v1/realtime";
 
+// Available voice options for OpenAI Voice API
+export enum VoiceType {
+  ALLOY = "alloy",
+  ASH = "ash",
+  BALLAD = "ballad",
+  CORAL = "coral",
+  ECHO = "echo",
+  SAGE = "sage",
+  SHIMMER = "shimmer",
+  VERSE = "verse"
+}
+
 const EVENTS_TO_IGNORE = [
   "response.function_call_arguments.delta",
   "rate_limits.updated",
@@ -173,19 +185,35 @@ class VoiceToolExecutor {
   }
 }
 
+/**
+ * Agent that connects to OpenAI's Voice API for real-time voice interactions.
+ */
 export class OpenAIVoiceReactAgent {
   protected connection: OpenAIWebSocketConnection;
 
   protected instructions?: string;
 
   protected tools: StructuredTool[];
+  
+  protected voice: VoiceType;
 
+  /**
+   * Creates a new OpenAIVoiceReactAgent
+   * @param params Configuration parameters
+   * @param params.instructions Optional instructions to send to the model
+   * @param params.tools Optional list of tools for the agent to use
+   * @param params.url The OpenAI API URL
+   * @param params.apiKey The OpenAI API key
+   * @param params.model The OpenAI model to use
+   * @param params.voice The voice to use for audio output (default: alloy)
+   */
   constructor(params: {
     instructions?: string;
     tools?: StructuredTool[];
     url?: string;
     apiKey?: string;
     model?: string;
+    voice?: VoiceType;
   }) {
     this.connection = new OpenAIWebSocketConnection({
       url: params.url,
@@ -194,6 +222,7 @@ export class OpenAIVoiceReactAgent {
     });
     this.instructions = params.instructions;
     this.tools = params.tools ?? [];
+    this.voice = params.voice ?? VoiceType.ALLOY;
   }
 
   /**
@@ -236,6 +265,7 @@ export class OpenAIVoiceReactAgent {
         input_audio_transcription: {
           model: "whisper-1",
         },
+        voice: this.voice,
         tools: toolDefs,
       },
     });

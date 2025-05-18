@@ -1,81 +1,128 @@
 # 🦜🎤 Voice ReAct Agent
 
-This is an implementation of a [ReAct](https://arxiv.org/abs/2210.03629)-style agent that uses OpenAI's new [Realtime API](https://platform.openai.com/docs/guides/realtime).
+This is an implementation of a [ReAct](https://arxiv.org/abs/2210.03629)-style agent that uses OpenAI's new [Realtime API](https://platform.openai.com/docs/guides/realtime).It includes implementations in both Python and TypeScript, choose whichever best fits your stack.
 
 Specifically, we enable this model to call tools by providing it a list of [LangChain tools](https://python.langchain.com/docs/how_to/custom_tools/#creating-tools-from-functions). It is easy to write custom tools, and you can easily pass these to the model.
 
-![](static/react.png)
+![ReAct Diagram](static/react.png)
 
-## Installation
+## Setup Instructions
 
-### Python
-
-Make sure you're running Python 3.10 or later, then install `uv` to be able to run the project:
+### 1. Clone the repo
 
 ```bash
-pip install uv
+git clone https://github.com/your-org/voice-react-agent.git
+cd voice-react-agent
 ```
 
-And make sure you have both `OPENAI_API_KEY` and `TAVILY_API_KEY` environment variables set up.
+---
+
+### 2. Configure environment variables
+
+#### Unix (bash/zsh)
 
 ```bash
 export OPENAI_API_KEY=your_openai_api_key
 export TAVILY_API_KEY=your_tavily_api_key
 ```
 
+#### PowerShell
+
+```powershell
+$env:OPENAI_API_KEY="your_openai_api_key"
+$env:TAVILY_API_KEY="your_tavily_api_key"
+```
+
+#### Windows CMD
+
+```cmd
+set OPENAI_API_KEY=your_openai_api_key
+set TAVILY_API_KEY=your_tavily_api_key
+```
+
+Or create a `.env` file in each directory (`server/` and `js_server/`) with:
+
+```
+OPENAI_API_KEY=your_openai_api_key
+TAVILY_API_KEY=your_tavily_api_key
+```
+
 Note: the Tavily API key is for the Tavily search engine, you can get an API key [here](https://app.tavily.com/). This is just an example tool, and if you do not want to use it you do not have to (see [Adding your own tools](#adding-your-own-tools))
 
-### TypeScript
+---
 
-Navigate into the `js_server` folder, then install required dependencies with `yarn`:
+## Running the Python Server
 
-```bash
-yarn
-```
+1. **Install dependencies** (ensure Python 3.10+):
 
-You will also need to copy the provided `js_server/.env.example` file to `.env` and fill in your OpenAI and Tavily keys.
+   ```bash
+   cd server
+   pip install uv
+   ```
 
-## Running the project
+2. **Start the server**:
 
-### Python
+   ```bash
+   uv run src/server/app.py
+   ```
 
-To run the project, execute the following commands:
+3. **Open in browser**:
+   Navigate to [http://localhost:3000](http://localhost:3000).
 
-```bash
-cd server
-uv run src/server/app.py
-```
+---
 
-### TypeScript
+## Running the TypeScript Server
 
-```bash
-cd js_server
-yarn dev
-```
+1. **Install dependencies**:
 
-## Open the browser
+   ```bash
+   cd js_server
+   yarn        # or npm install
+   ```
 
-Now you can open the browser and navigate to `http://localhost:3000` to see the project running.
+2. **Start the dev server**:
 
-### Enable microphone
+   ```bash
+   yarn dev    # or npm run dev
+   ```
 
-You may need to make sure that your browser can access your microphone.
+3. **Open in browser**:
+   Navigate to [http://localhost:3000](http://localhost:3000).
 
-- [Chrome](http://0.0.0.0:3000/)
+---
 
-## Adding your own tools
+## Enable Microphone Access
 
-You can add your own tools by adding them to the `server/src/server/tools.py` file for Python or the `js_server/src/tools.ts` folder for TypeScript.
+Your browser will prompt you for microphone permissions. If it doesn’t:
 
-## Adding your own custom instructions
+* **Chrome:** visit `chrome://settings/content/microphone`
+* **Firefox:** visit `about:preferences#privacy`
+* **Edge:** visit `edge://settings/content/microphone`
 
-You can add your own custom instructions by adding them to the `server/src/server/prompt.py` file for Python or the `js_server/src/prompt.ts` folder for TypeScript.
+---
 
-## Errors
+## Adding Custom Tools
 
-- `WebSocket connection: HTTP 403`
-  - This error is due to account permissions from OpenAI side, your account/org doesn't have api access to Realtime API or insufficient funds.
-  - check if you have Realtime API access in the playground [here](https://platform.openai.com/playground/realtime).
+* **Python:** edit `server/src/server/tools.py`
+* **TypeScript:** edit `js_server/src/tools.ts`
+
+---
+
+## Custom Instructions & Prompts
+
+* **Python:** modify `server/src/server/prompt.py`
+* **TypeScript:** modify `js_server/src/prompt.ts`
+
+---
+
+## Common Errors
+
+* **WebSocket connection: HTTP 403**
+
+  * Usually means your org/account lacks Realtime API access or has insufficient funds.
+  * Check if you have Realtime API access in the playground [here](https://platform.openai.com/playground/realtime).
+
+---
 
 ## Next steps
 
